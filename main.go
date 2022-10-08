@@ -183,6 +183,27 @@ func frequencyScore(input string) float64 {
 	return chiSquare(expectedDistribution, distrib(input))
 }
 
+func hammingDistance(lhs, rhs []byte) (distance int) {
+	if len(lhs) != len(rhs) {
+		//  let's make this assumption
+		panic("trying to measure hamming distance of different length data")
+	}
+
+	distance = 0
+	for i, l := range lhs {
+		r := rhs[i]
+
+		for i := 0; i < 8; i++ {
+			n := byte(1 << i)
+			if l&n != r&n {
+				distance++
+			}
+		}
+	}
+
+	return distance
+}
+
 func panicIfErr(err error) {
 	if err != nil {
 		panic(err)

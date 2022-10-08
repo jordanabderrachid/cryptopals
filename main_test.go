@@ -33,3 +33,12 @@ I go crazy when I hear a cymbal`
 
 	assert.Equal(t, hex.EncodeToString(encrypted), expectedOutput)
 }
+
+func TestHammingDistance(t *testing.T) {
+	lhs, rhs := "this is a test", "wokka wokka!!!"
+	expectedOutput := 37
+
+	output := hammingDistance([]byte(lhs), []byte(rhs))
+
+	assert.Equal(t, expectedOutput, output)
+}
