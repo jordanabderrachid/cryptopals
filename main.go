@@ -5,24 +5,41 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math"
+	"os"
 	"sort"
 	"strings"
 	"unicode/utf8"
 )
 
-func main() {
-	in := "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
+type candidate struct {
+	key   byte
+	plain string
+	score float64
+}
 
-	type candidate struct {
-		key   byte
-		plain string
-		score float64
+func main() {
+	fileContent, err := os.ReadFile("./4.txt")
+	panicIfErr(err)
+
+	candidates := make([]candidate, 0)
+	for _, in := range strings.Split(string(fileContent), "\n") {
+		candidates = append(candidates, decipher(in)...)
 	}
 
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].score < candidates[j].score
+	})
+
+	for _, c := range candidates[0:10] {
+		fmt.Printf("`%s` %f\n", c.plain, c.score)
+	}
+}
+
+func decipher(encrypted string) []candidate {
 	candidates := make([]candidate, 0)
 	for i := 0; i < int(math.Pow(2, 8)); i++ {
 		key := byte(i)
-		encrypted, err := hex.DecodeString(in)
+		encrypted, err := hex.DecodeString(encrypted)
 		panicIfErr(err)
 
 		plainBuilder := &strings.Builder{}
@@ -44,13 +61,7 @@ func main() {
 		})
 	}
 
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].score < candidates[j].score
-	})
-
-	for _, c := range candidates {
-		fmt.Printf("%s %f\n", c.plain, c.score)
-	}
+	return candidates
 }
 
 func hexToBase64(in string) string {
@@ -139,7 +150,7 @@ func frequencyScore(input string) float64 {
 		score = 0
 
 		for k, actualValue := range actual {
-			if k == " " {
+			if k == " " || k == "\n" {
 				// we don't have blank space in our expected distribution, so skipping this for evaluation
 				continue
 			}
