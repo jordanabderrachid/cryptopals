@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
@@ -33,6 +34,18 @@ func main() {
 	for _, c := range candidates[0:10] {
 		fmt.Printf("`%s` %f\n", c.plain, c.score)
 	}
+}
+
+func cipher(plain []byte, key []byte) []byte {
+	keySize := len(key)
+	buf := &bytes.Buffer{}
+
+	for i, p := range plain {
+		err := buf.WriteByte(p ^ key[i%keySize])
+		panicIfErr(err)
+	}
+
+	return buf.Bytes()
 }
 
 func decipher(encrypted string) []candidate {
