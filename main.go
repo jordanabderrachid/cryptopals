@@ -7,6 +7,7 @@ import (
 	"math"
 	"sort"
 	"strings"
+	"unicode/utf8"
 )
 
 func main() {
@@ -31,6 +32,11 @@ func main() {
 		}
 
 		plain := plainBuilder.String()
+		if !utf8.ValidString(plain) {
+			// filter out invalid utf-8 text
+			continue
+		}
+
 		candidates = append(candidates, candidate{
 			key:   key,
 			plain: plain,
@@ -79,62 +85,78 @@ func xorBytes(lhs, rhs []byte) []byte {
 
 func frequencyScore(input string) float64 {
 	// https://pi.math.cornell.edu/~mec/2003-2004/cryptography/subs/frequencies.html
-	type frequencyEntry struct {
-		target string
-		value  float64
-	}
-	entries := []frequencyEntry{
-		{target: "e", value: 12.02},
-		{target: "t", value: 9.10},
-		{target: "a", value: 8.12},
-		{target: "o", value: 7.68},
-		{target: "i", value: 7.31},
-		{target: "n", value: 6.95},
-		{target: "s", value: 6.28},
-		{target: "r", value: 6.02},
-		{target: "d", value: 4.32},
-		{target: "l", value: 3.98},
-		{target: "u", value: 2.88},
-		{target: "c", value: 2.71},
-		{target: "m", value: 2.61},
-		{target: "f", value: 2.30},
-		{target: "y", value: 2.11},
-		{target: "w", value: 2.09},
-		{target: "g", value: 2.03},
-		{target: "p", value: 1.82},
-		{target: "b", value: 1.49},
-		{target: "v", value: 1.11},
-		{target: "k", value: 0.69},
-		{target: "x", value: 0.17},
-		{target: "q", value: 0.11},
-		{target: "j", value: 0.10},
-		{target: "z", value: 0.07},
+	expectedDistribution := map[string]float64{
+		"e": 12.02,
+		"t": 9.10,
+		"a": 8.12,
+		"o": 7.68,
+		"i": 7.31,
+		"n": 6.95,
+		"s": 6.28,
+		"r": 6.02,
+		"d": 4.32,
+		"l": 3.98,
+		"u": 2.88,
+		"c": 2.71,
+		"m": 2.61,
+		"f": 2.30,
+		"y": 2.11,
+		"w": 2.09,
+		"g": 2.03,
+		"p": 1.82,
+		"b": 1.49,
+		"v": 1.11,
+		"k": 0.69,
+		"x": 0.17,
+		"q": 0.11,
+		"j": 0.10,
+		"z": 0.07,
 	}
 
-	freq := func(input, target string) float64 {
-		count := 0
+	distrib := func(input string) map[string]float64 {
+		distribution := make(map[string]float64)
 		size := 0
-
 		for _, c := range strings.Split(input, "") {
-			if c == " " {
+			size++
+			c = strings.ToLower(c)
+			count, present := distribution[c]
+			if present {
+				distribution[c] = count + 1
+			} else {
+				distribution[c] = 1
+			}
+
+		}
+
+		for char, count := range distribution {
+			distribution[char] = count / float64(size) * 100
+		}
+
+		return distribution
+	}
+
+	chiSquare := func(expected, actual map[string]float64) (score float64) {
+		score = 0
+
+		for k, actualValue := range actual {
+			if k == " " {
+				// we don't have blank space in our expected distribution, so skipping this for evaluation
 				continue
 			}
 
-			size++
-			if strings.ToLower(c) == target {
-				count++
+			expectedValue, ok := expected[k]
+			if !ok {
+				// artificially make this unexpected value very rare
+				expectedValue = 0.001
 			}
+
+			score += math.Pow(actualValue-expectedValue, 2) / expectedValue
 		}
 
-		return float64(count) / float64(size) * 100
+		return score
 	}
 
-	score := float64(0)
-	for _, e := range entries {
-		score += math.Abs(e.value - freq(input, e.target))
-	}
-
-	return score
+	return chiSquare(expectedDistribution, distrib(input))
 }
 
 func panicIfErr(err error) {
